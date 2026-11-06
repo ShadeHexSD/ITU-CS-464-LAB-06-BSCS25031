@@ -1,3 +1,4 @@
+
 using System.Collections;
 using TMPro;
 using UnityEngine;
@@ -11,16 +12,25 @@ public class GameManager : MonoBehaviour
     [SerializeField] int lives = 3;
     [SerializeField] float respawnDelay = 0.6f;
     [SerializeField] float spawnProtection = 1.5f;
+
     [SerializeField] Health player;
     [SerializeField] Transform respawnPoint;
+
     [SerializeField] TMP_Text scoreText;
     [SerializeField] TMP_Text livesText;
+    [SerializeField] TMP_Text timerText;
+
     [SerializeField] GameObject winPanel;
     [SerializeField] GameObject losePanel;
+
     [SerializeField] bool winByReachingExit = false;
     [SerializeField] Transform mazeEnd;
     [SerializeField] float winDistance = 1.5f;
 
+    [SerializeField] bool useTimer = false;
+    [SerializeField] float timeLimit = 90f;
+
+    float timeRemaining;
     int score;
     bool finished;
     bool respawning;
@@ -47,27 +57,44 @@ public class GameManager : MonoBehaviour
         if (losePanel != null)
             losePanel.SetActive(false);
 
-        if (player == null || respawnPoint == null)
-            Debug.LogError("Assign Player and Respawn Point on GameManager.", this);
+        timeRemaining = timeLimit;
 
         UpdateUI();
+        UpdateTimerUI();
     }
-
 
     void Update()
     {
-        if (!winByReachingExit || finished || respawning ||
-            mazeEnd == null || player == null)
+        if (finished)
             return;
 
-        Vector3 playerPosition = player.transform.position;
-        Vector3 endPosition = mazeEnd.position;
+        if (useTimer)
+        {
+            timeRemaining -= Time.deltaTime;
 
-        playerPosition.y = 0f;
-        endPosition.y = 0f;
+            if (timeRemaining <= 0f)
+            {
+                timeRemaining = 0f;
+                UpdateTimerUI();
+                Lose();
+                return;
+            }
 
-        if (Vector3.Distance(playerPosition, endPosition) <= winDistance)
-            Win();
+            UpdateTimerUI();
+        }
+
+        if (winByReachingExit && !respawning &&
+            mazeEnd != null && player != null)
+        {
+            Vector3 playerPosition = player.transform.position;
+            Vector3 endPosition = mazeEnd.position;
+
+            playerPosition.y = 0f;
+            endPosition.y = 0f;
+
+            if (Vector3.Distance(playerPosition, endPosition) <= winDistance)
+                Win();
+        }
     }
 
     public void AddScore(int amount)
@@ -91,6 +118,24 @@ public class GameManager : MonoBehaviour
             livesText.text = $"Lives: {lives}   Health: {Mathf.Max(player.Current, 0)} / {player.Max}";
     }
 
+    void UpdateTimerUI()
+    {
+        if (timerText == null)
+            return;
+
+        if (!useTimer)
+        {
+            timerText.text = "";
+            return;
+        }
+
+        int secondsLeft = Mathf.CeilToInt(timeRemaining);
+        int minutes = secondsLeft / 60;
+        int seconds = secondsLeft % 60;
+
+        timerText.text = $"Time: {minutes:00}:{seconds:00}";
+    }
+
     public void PlayerDied()
     {
         if (finished || respawning)
@@ -111,11 +156,11 @@ public class GameManager : MonoBehaviour
     IEnumerator Respawn()
     {
         respawning = true;
+
         yield return new WaitForSeconds(respawnDelay);
 
         if (player == null || respawnPoint == null)
         {
-            Debug.LogError("Cannot respawn: Player or Respawn Point is missing.", this);
             respawning = false;
             yield break;
         }
@@ -125,11 +170,13 @@ public class GameManager : MonoBehaviour
         if (body != null)
         {
             body.position = respawnPoint.position;
+
 #if UNITY_6000_0_OR_NEWER
             body.linearVelocity = Vector3.zero;
 #else
             body.velocity = Vector3.zero;
 #endif
+
             body.angularVelocity = Vector3.zero;
         }
         else
@@ -147,8 +194,10 @@ public class GameManager : MonoBehaviour
             return;
 
         finished = true;
+
         if (winPanel != null)
             winPanel.SetActive(true);
+
         Time.timeScale = 0f;
     }
 
@@ -158,8 +207,10 @@ public class GameManager : MonoBehaviour
             return;
 
         finished = true;
+
         if (losePanel != null)
             losePanel.SetActive(true);
+
         Time.timeScale = 0f;
     }
 
