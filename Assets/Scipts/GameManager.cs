@@ -17,6 +17,9 @@ public class GameManager : MonoBehaviour
     [SerializeField] TMP_Text livesText;
     [SerializeField] GameObject winPanel;
     [SerializeField] GameObject losePanel;
+    [SerializeField] bool winByReachingExit = false;
+    [SerializeField] Transform mazeEnd;
+    [SerializeField] float winDistance = 1.5f;
 
     int score;
     bool finished;
@@ -50,6 +53,23 @@ public class GameManager : MonoBehaviour
         UpdateUI();
     }
 
+
+    void Update()
+    {
+        if (!winByReachingExit || finished || respawning ||
+            mazeEnd == null || player == null)
+            return;
+
+        Vector3 playerPosition = player.transform.position;
+        Vector3 endPosition = mazeEnd.position;
+
+        playerPosition.y = 0f;
+        endPosition.y = 0f;
+
+        if (Vector3.Distance(playerPosition, endPosition) <= winDistance)
+            Win();
+    }
+
     public void AddScore(int amount)
     {
         if (finished || amount <= 0)
@@ -58,7 +78,7 @@ public class GameManager : MonoBehaviour
         score += amount;
         UpdateUI();
 
-        if (score >= targetScore)
+        if (!winByReachingExit && score >= targetScore)
             Win();
     }
 
